@@ -15,5 +15,5 @@ process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 process.env.OLLAMA_BASE_URL = 'http://localhost:11434';
 process.env.OLLAMA_MODEL = 'llama3.2';
-process.env.NODE_ENV = 'test';
+// NODE_ENV is read-only in TypeScript strict mode; it is set by the test runner automatically
 process.env.SKIP_ENV_VALIDATION = 'true';

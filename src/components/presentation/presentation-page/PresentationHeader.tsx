@@ -8,7 +8,7 @@ import { useParams, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // Import our new components
-import DeckShalaText from "@/components/globals/deckshala-logo";
+import DeckShalaText from "@/components/globals/allweone-logo";
 import { Button } from "@/components/ui/button";
 import * as motion from "framer-motion/client";
 import { ExportButton } from "./buttons/ExportButton";

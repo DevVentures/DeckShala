@@ -41,5 +41,16 @@
     ".next-dev/types/**/*.ts",
     "src/components/notebook/mindmap/types.tss"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "vitest.config.ts",
+    "vitest.setup.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/__tests__/**",
+    "e2e/**",
+    "tests/**"
+  ]
 }

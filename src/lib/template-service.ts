@@ -360,7 +360,7 @@ export class TemplateService {
         return TemplateService.getDefaultStructureForCategory(category);
       }
 
-      return template.structure as TemplateStructure;
+      return template.slideStructure as unknown as TemplateStructure;
     } catch (error) {
       logger.error("Failed to fetch template structure", error as Error, { category });
       return TemplateService.getDefaultStructureForCategory(category);
@@ -518,7 +518,7 @@ export class TemplateService {
     try {
       const templates = await db.presentationTemplate.findMany({
         where: { templateCategory: category, isPublic: true },
-        orderBy: { usageCount: "desc" },
+        orderBy: { downloads: "desc" },
         take: 1,
       });
 
@@ -536,7 +536,7 @@ export class TemplateService {
     try {
       const templates = await db.presentationTemplate.findMany({
         where: { isPublic: true },
-        orderBy: [{ templateCategory: "asc" }, { usageCount: "desc" }],
+        orderBy: [{ templateCategory: "asc" }, { downloads: "desc" }],
       });
 
       return { success: true, templates };
@@ -553,7 +553,7 @@ export class TemplateService {
     try {
       await db.presentationTemplate.update({
         where: { id: templateId },
-        data: { usageCount: { increment: 1 } },
+        data: { downloads: { increment: 1 } },
       });
 
       logger.info("Template usage tracked", { templateId });

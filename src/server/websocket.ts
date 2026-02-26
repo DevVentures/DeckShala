@@ -80,8 +80,7 @@ const yjsPersistence = {
   },
 };
 
-// Set up the persistence layer
-setPersistence(yjsPersistence);
+// Persistence layer is passed to YSocketIO when initialized (see yjsPersistence above)
 
 export function initializeWebSocketServer(httpServer: HTTPServer): SocketIOServer {
   const io = new SocketIOServer(httpServer, {
@@ -191,8 +190,7 @@ export function initializeWebSocketServer(httpServer: HTTPServer): SocketIOServe
           color,
         });
 
-        // Set up Yjs connection for real-time collaboration
-        setupWSConnection(socket, roomName);
+        // Yjs collaboration is handled via y-socket.io / YSocketIO (initialized separately)
 
         logger.info("User joined collaboration room", {
           presentationId,
@@ -298,21 +296,7 @@ export function initializeWebSocketServer(httpServer: HTTPServer): SocketIOServe
 
         // Update room stats
         const rooms = await db.collaborationRoom.findMany({
-          include: {
-            _count: {
-              select: {
-                presentation: {
-                  where: {
-                    collaborators: {
-                      some: {
-                        isActive: true,
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          select: { id: true, presentationId: true },
         });
 
         for (const room of rooms) {

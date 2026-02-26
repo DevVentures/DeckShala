@@ -487,7 +487,9 @@ export function PresentationGenerationManager() {
       (async () => {
         try {
           let finalPrompt = presentationInput ?? "";
-          let templateStructureInfo = null;
+          let templateStructureInfo:
+            | import("@/lib/template-service").TemplateStructure
+            | null = null;
 
           // Try to get enhanced prompt if presentation has template/brand kit
           if (currentPresentationId) {
@@ -498,7 +500,7 @@ export function PresentationGenerationManager() {
 
             if (enhancedResult.success) {
               finalPrompt = enhancedResult.enhancedPrompt ?? finalPrompt;
-              templateStructureInfo = enhancedResult.templateStructure;
+              templateStructureInfo = enhancedResult.templateStructure ?? null;
 
               // Apply brand theme if available
               if (enhancedResult.brandTheme) {
