@@ -1,0 +1,862 @@
+{
+  "info": {
+    "name": "SlideMind – AI Presentation Generator API",
+    "description": "Complete API reference for the SlideMind platform.\n\n## Architecture Note\nThis application uses two distinct interaction patterns:\n\n1. **HTTP API Routes** — Standard REST/streaming endpoints under `/api/*`. These are directly testable with Postman.\n2. **Next.js Server Actions** — RPC-style server functions called by the React UI. These are NOT standard HTTP endpoints and cannot be tested directly via Postman; they are documented in the \"Server Actions (Reference)\" folder for completeness.\n\n## Authentication\nAll protected routes require an active NextAuth.js session cookie (`next-auth.session-token`). Obtain a session by signing in via Google OAuth at `/auth/signin`, then copy the session cookie into the `session_cookie` collection variable.\n\n## Streaming Responses\nThe `/api/presentation/outline`, `/api/presentation/outline-with-search`, and `/api/presentation/generate` endpoints return **Server-Sent Event (SSE) / text streams** via the Vercel AI SDK `toDataStreamResponse()`. In Postman, set the request and read the streamed body as plain text.\n\n## Rate Limits\n- `POST /api/presentation/generate` → 3 requests / minute / user\n- `POST /api/presentation/outline` → 5 requests / minute / user\n- `POST /api/presentation/outline-with-search` → 5 requests / minute / user\n\n## Base URLs\n- Development: `http://localhost:3000`\n- Production: `https://your-domain.com`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "slidemind-presentation-api-v3",
+    "version": "3.0.0"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL of the running SlideMind server"
+    },
+    {
+      "key": "api_url",
+      "value": "{{base_url}}/api",
+      "type": "string",
+      "description": "API base path"
+    },
+    {
+      "key": "session_cookie",
+      "value": "",
+      "type": "string",
+      "description": "Value of the 'next-auth.session-token' cookie. Obtain by signing in via Google OAuth and inspecting browser DevTools → Application → Cookies."
+    },
+    {
+      "key": "presentation_id",
+      "value": "",
+      "type": "string",
+      "description": "A valid presentation ID (UUID). Set this after creating a presentation via the UI."
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication (NextAuth)",
+      "description": "SlideMind uses NextAuth.js v5 with Google OAuth only. Authentication is session-cookie based — there are no API-key or JWT bearer token endpoints. Sign in via the browser OAuth flow to obtain a session cookie.",
+      "item": [
+        {
+          "name": "Initiate Google Sign-In",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/signin",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signin"]
+            },
+            "description": "Opens the NextAuth sign-in page. Navigate to this URL in a browser to start the Google OAuth flow. After completing sign-in, copy the `next-auth.session-token` cookie value into the `session_cookie` collection variable."
+          }
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/signout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signout"]
+            },
+            "description": "Renders the NextAuth sign-out confirmation page. Navigate in a browser to invalidate the current session cookie."
+          }
+        },
+        {
+          "name": "Get Current Session",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "next-auth.session-token={{session_cookie}}",
+                "description": "Paste your session cookie value into the collection variable 'session_cookie'"
+              }
+            ],
+            "url": {
+              "raw": "{{api_url}}/auth/session",
+              "host": ["{{api_url}}"],
+              "path": ["auth", "session"]
+            },
+            "description": "Returns the currently authenticated user's session object. Use this to verify your `session_cookie` is valid before calling protected endpoints.\n\n**Example 200 response (authenticated):**\n```json\n{\n  \"user\": {\n    \"id\": \"clxyz123\",\n    \"name\": \"Arjun Sharma\",\n    \"email\": \"arjun@example.com\",\n    \"image\": \"https://lh3.googleusercontent.com/...\",\n    \"role\": \"USER\",\n    \"hasAccess\": true,\n    \"isAdmin\": false\n  },\n  \"expires\": \"2026-03-28T09:00:00.000Z\"\n}\n```\n\n**Example 200 response (not authenticated):**\n```json\n{}\n```"
+          },
+          "response": [
+            {
+              "name": "Session – Authenticated",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{api_url}}/auth/session" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"user\": {\n    \"id\": \"clxyz123\",\n    \"name\": \"Arjun Sharma\",\n    \"email\": \"arjun@example.com\",\n    \"image\": \"https://lh3.googleusercontent.com/photo.jpg\",\n    \"role\": \"USER\",\n    \"hasAccess\": true,\n    \"isAdmin\": false\n  },\n  \"expires\": \"2026-03-28T09:00:00.000Z\"\n}"
+            },
+            {
+              "name": "Session – Not Authenticated",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{api_url}}/auth/session" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Presentation Generation (Streaming)",
+      "description": "The core AI generation pipeline. Typical two-step flow:\n1. **Generate Outline** (or **Generate Outline with Web Search**) → returns a `<TITLE>` + markdown outline.\n2. Pass the outline to **Generate Slides** → returns a streaming XML `<PRESENTATION>`.\n\nBoth endpoints use the Vercel AI SDK and return **text streams**. In Postman, the full body is available after streaming completes.",
+      "item": [
+        {
+          "name": "Generate Outline",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"The rise of AI in Indian healthcare and telemedicine\",\n  \"numberOfCards\": 8,\n  \"language\": \"en-US\",\n  \"modelProvider\": \"ollama\",\n  \"modelId\": \"llama3.2\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/presentation/outline",
+              "host": ["{{api_url}}"],
+              "path": ["presentation", "outline"]
+            },
+            "description": "Generates a structured presentation outline using the configured AI model.\n\n**Auth:** Required (session cookie)\n**Rate limit:** 5 requests / minute / user\n\n**Request body fields:**\n- `prompt` (string, **10–2000 chars**, required) — presentation topic\n- `numberOfCards` (integer, **3–20**, required) — number of slides to generate\n- `language` (enum, required) — one of: `en-US` `es-ES` `fr-FR` `de-DE` `it-IT` `pt-BR` `ru-RU` `ja-JP` `ko-KR` `zh-CN` `ar`\n- `modelProvider` (optional) — `ollama` | `openai` | `lmstudio`\n- `modelId` (optional) — specific model (e.g. `llama3.2`, `gpt-4o-mini`)\n\n**Streaming text response:**\n```\n<TITLE>AI in Indian Healthcare</TITLE>\n\n# First Topic\n- Key point 1\n- Key point 2\n\n# Second Topic\n...\n```\n\n**Error codes:** `401` Unauthorized · `400` Validation failed · `429` Rate limited · `503` AI unavailable"
+          },
+          "response": [
+            {
+              "name": "200 – Streaming outline",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/outline" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "text",
+              "body": "<TITLE>AI in Indian Healthcare: Transforming Patient Care</TITLE>\n\n# Current Healthcare Landscape\n- 1 doctor per 834 patients vs WHO 1:1000\n- Tier 2 & 3 cities: <30% specialist access\n- Government health spend: 1.5% of GDP\n\n# Telemedicine Revolution\n- 300% growth post-COVID-19\n- eSanjeevani: 100M+ consultations\n- Apollo Telehealth, Practo, 1mg leading"
+            },
+            {
+              "name": "400 – Validation Failed",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/outline" } },
+              "status": "Bad Request", "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"error\": \"Validation failed\",\n  \"details\": [\n    { \"field\": \"prompt\", \"message\": \"Prompt must be at least 10 characters\" }\n  ]\n}"
+            },
+            {
+              "name": "401 – Unauthorized",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/outline" } },
+              "status": "Unauthorized", "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Unauthorized\" }"
+            },
+            {
+              "name": "429 – Rate Limited",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/outline" } },
+              "status": "Too Many Requests", "code": 429,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Too many requests. Please try again later.\" }"
+            },
+            {
+              "name": "503 – AI Service Unavailable",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/outline" } },
+              "status": "Service Unavailable", "code": 503,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Ollama service is not available. Please ensure Ollama is running.\" }"
+            }
+          ]
+        },
+        {
+          "name": "Generate Outline with Web Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Union Budget 2025-26 key highlights and impact on startups\",\n  \"numberOfCards\": 10,\n  \"language\": \"en-US\",\n  \"modelProvider\": \"ollama\",\n  \"modelId\": \"llama3.2\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/presentation/outline-with-search",
+              "host": ["{{api_url}}"],
+              "path": ["presentation", "outline-with-search"]
+            },
+            "description": "Same as **Generate Outline** but the model is given a web search tool. It autonomously decides when to search (2–5 queries) to pull in current data, statistics, and recent developments.\n\n**Auth:** Required · **Rate limit:** 5 req/min/user\n\nRequest and response schema are identical to `/api/presentation/outline`.\n\n**Note:** Requires a tool-calling capable model (`llama3.2` with Ollama tool support, or `gpt-4o-mini` with OpenAI)."
+          }
+        },
+        {
+          "name": "Generate Slides (from Outline)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"AI in Indian Healthcare: Transforming Patient Care\",\n  \"prompt\": \"The rise of AI in Indian healthcare and telemedicine\",\n  \"outline\": [\n    \"# Current Healthcare Landscape\\n- 1 doctor per 834 patients\\n- Tier 2 & 3 cities: <30% specialist access\",\n    \"# Telemedicine Revolution\\n- 300% post-COVID growth\\n- eSanjeevani: 100M+ consultations\",\n    \"# AI Diagnostics & Imaging\\n- Diabetic retinopathy: >95% accuracy\\n- Wadhwani AI: TB detection from X-rays\",\n    \"# Digital Health Startups\\n- Practo, PharmEasy, 1mg ecosystem\\n- $3.2B invested in 2024\",\n    \"# Government Initiatives\\n- Ayushman Bharat Digital Mission (ABDM)\\n- National Digital Health Blueprint\",\n    \"# Challenges & Barriers\\n- Rural connectivity gaps\\n- Data privacy: DPDP Act 2023\",\n    \"# Future Outlook 2030\\n- AI-first hospitals in Tier 1 cities\\n- Predictive public health infrastructure\",\n    \"# Call to Action\\n- Invest in health-tech\\n- Upskill medical staff in AI tools\"\n  ],\n  \"language\": \"en-US\",\n  \"tone\": \"professional\",\n  \"modelProvider\": \"ollama\",\n  \"modelId\": \"llama3.2\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/presentation/generate",
+              "host": ["{{api_url}}"],
+              "path": ["presentation", "generate"]
+            },
+            "description": "Generates the full XML slide content from a previously generated outline. This is **Step 2** of the two-phase generation pipeline.\n\n**Auth:** Required (session cookie)\n**Rate limit:** **3 requests / minute / user** (most restrictive — computationally heavy)\n\n**Request body fields:**\n- `title` (string, 1–200 chars, required) — title from the outline step\n- `prompt` (string, max 2000, required) — original user prompt for context\n- `outline` (string[], 3–20 items, required) — markdown sections from Step 1\n- `language` (string, required) — language code e.g. `en-US`\n- `tone` (string, required) — e.g. `professional`, `casual`, `academic`, `startup`\n- `modelProvider` (optional) — `ollama` | `openai` | `lmstudio`\n- `modelId` (optional) — model name\n- `searchResults` (optional) — pre-fetched search results array\n\n**Streaming XML response** (`<PRESENTATION>…</PRESENTATION>` with `<SECTION>` per slide)\n\n**Available slide layouts:** `COLUMNS` · `BULLETS` · `ICONS` · `CYCLE` · `ARROWS` · `ARROW-VERTICAL` · `TIMELINE` · `PYRAMID` · `STAIRCASE` · `BOXES` · `COMPARE` · `BEFORE-AFTER` · `PROS-CONS` · `TABLE` · `CHART`\n\n**Error codes:** `401` · `400` · `429` · `503`"
+          },
+          "response": [
+            {
+              "name": "200 – Streaming XML slides",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/generate" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "text",
+              "body": "<PRESENTATION>\n\n<SECTION layout=\"right\">\n  <H1>Current Healthcare Landscape in India</H1>\n  <BULLETS>\n    <DIV><H3>Doctor-Patient Ratio</H3><P>India has 1 doctor per 834 patients, far below WHO's 1:1000</P></DIV>\n    <DIV><H3>Specialist Access</H3><P>70%+ specialists concentrated in Tier 1 cities</P></DIV>\n    <DIV><H3>Government Spend</H3><P>1.5% of GDP vs global average of 6%</P></DIV>\n  </BULLETS>\n  <IMG query=\"overcrowded government hospital in India with patients waiting, documentary photography\" />\n</SECTION>\n\n<SECTION layout=\"left\">\n  <H1>Telemedicine Revolution</H1>\n  <TIMELINE>\n    <DIV><H3>2020</H3><P>COVID-19 triggers 300% telemedicine adoption surge</P></DIV>\n    <DIV><H3>2022</H3><P>eSanjeevani reaches 50M consultations</P></DIV>\n    <DIV><H3>2024</H3><P>100M+ total consultations; Practo serves 25M patients/year</P></DIV>\n  </TIMELINE>\n  <IMG query=\"doctor conducting telehealth video consultation with rural patient on smartphone in India\" />\n</SECTION>\n\n</PRESENTATION>"
+            },
+            {
+              "name": "429 – Rate Limited (3/min)",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/presentation/generate" } },
+              "status": "Too Many Requests", "code": 429,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Too many requests. Please try again later.\" }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ollama AI Service",
+      "description": "Endpoints for managing and monitoring the local Ollama AI service. Ollama is the default AI provider.",
+      "item": [
+        {
+          "name": "Ollama Health Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/health/ollama",
+              "host": ["{{api_url}}"],
+              "path": ["health", "ollama"]
+            },
+            "description": "Returns detailed health status of the connected Ollama service.\n\n**Auth:** Required\n\n**HTTP status mapping:**\n- `200` → status: `healthy`\n- `207` → status: `degraded`\n- `503` → status: `unavailable`"
+          },
+          "response": [
+            {
+              "name": "200 – Healthy",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/health/ollama" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": \"healthy\",\n  \"responseTime\": 145,\n  \"models\": [\"llama3.2\", \"mistral:7b\"],\n  \"version\": \"0.3.6\",\n  \"recommendations\": []\n}"
+            },
+            {
+              "name": "503 – Unavailable",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/health/ollama" } },
+              "status": "Service Unavailable", "code": 503,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"status\": \"unavailable\",\n  \"error\": \"Connection refused – is Ollama running?\",\n  \"recommendations\": [\n    \"Run 'ollama serve' to start the service\",\n    \"Ensure OLLAMA_BASE_URL is set correctly in .env\"\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Available Models",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/ollama/models",
+              "host": ["{{api_url}}"],
+              "path": ["ollama", "models"]
+            },
+            "description": "Returns the list of models currently pulled and available in the local Ollama instance.\n\n**Auth:** Required (any authenticated user)"
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/ollama/models" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"models\": [\n    { \"name\": \"llama3.2\", \"size\": 2048000000, \"modified_at\": \"2025-01-15T12:00:00Z\" },\n    { \"name\": \"mistral:7b-instruct\", \"size\": 4103000000, \"modified_at\": \"2025-01-10T08:30:00Z\" }\n  ]\n}"
+            },
+            {
+              "name": "503 – Ollama Offline",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/ollama/models" } },
+              "status": "Service Unavailable", "code": 503,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Ollama service is not running\", \"models\": [] }"
+            }
+          ]
+        },
+        {
+          "name": "Pull Model (Admin Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelName\": \"llama3.2\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{api_url}}/ollama/models",
+              "host": ["{{api_url}}"],
+              "path": ["ollama", "models"]
+            },
+            "description": "Initiates an Ollama model pull from the registry.\n\n**Auth:** Required — **ADMIN role only** (returns `403` for regular users)\n\n**Request body:**\n- `modelName` (string, required) — e.g. `llama3.2`, `mistral:7b-instruct`, `codellama:13b`"
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/ollama/models" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": true, \"message\": \"Model llama3.2 pulled successfully\" }"
+            },
+            {
+              "name": "403 – Not Admin",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/ollama/models" } },
+              "status": "Forbidden", "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Admin access required\" }"
+            }
+          ]
+        },
+        {
+          "name": "Get Model Performance Metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/ollama/metrics",
+              "host": ["{{api_url}}"],
+              "path": ["ollama", "metrics"]
+            },
+            "description": "Returns in-memory performance metrics per model — token speed, average latency, request counts, error rates.\n\n**Auth:** Required. Metrics are process-local and reset on server restart."
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/ollama/metrics" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"metrics\": {\n    \"llama3.2\": {\n      \"totalRequests\": 42,\n      \"successfulRequests\": 40,\n      \"failedRequests\": 2,\n      \"averageLatencyMs\": 3200,\n      \"tokensGenerated\": 128000\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cache Management (Admin)",
+      "description": "AI generation cache statistics and maintenance. Both endpoints require **ADMIN role**.\n\nThe cache stores AI-generated outlines/slides to avoid redundant model calls for similar prompts.",
+      "item": [
+        {
+          "name": "Get Cache Statistics",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/cache/stats",
+              "host": ["{{api_url}}"],
+              "path": ["cache", "stats"]
+            },
+            "description": "Returns current cache statistics: hit rate, total entries, size, oldest/newest entry timestamps.\n\n**Auth:** Required — ADMIN role only"
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/cache/stats" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true,\n  \"stats\": {\n    \"totalEntries\": 128,\n    \"hitRate\": 0.68,\n    \"missRate\": 0.32,\n    \"totalHits\": 320,\n    \"totalMisses\": 150,\n    \"sizeBytes\": 2048000,\n    \"oldestEntry\": \"2026-02-01T10:00:00Z\",\n    \"newestEntry\": \"2026-02-26T09:45:00Z\"\n  }\n}"
+            },
+            {
+              "name": "403 – Forbidden",
+              "originalRequest": { "method": "GET", "header": [], "url": { "raw": "{{api_url}}/cache/stats" } },
+              "status": "Forbidden", "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"error\": \"Admin access required\" }"
+            }
+          ]
+        },
+        {
+          "name": "Cleanup Expired Cache Entries",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/cache/stats",
+              "host": ["{{api_url}}"],
+              "path": ["cache", "stats"]
+            },
+            "description": "Removes all expired cache entries. No request body needed. Run periodically for maintenance.\n\n**Auth:** Required — ADMIN role only"
+          },
+          "response": [
+            {
+              "name": "200 – Success",
+              "originalRequest": { "method": "POST", "header": [], "url": { "raw": "{{api_url}}/cache/stats" } },
+              "status": "OK", "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{ \"success\": true, \"deletedCount\": 23 }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "File Upload (UploadThing)",
+      "description": "File upload integration via UploadThing. Used for uploading presentation assets such as images and brand logos.",
+      "item": [
+        {
+          "name": "UploadThing Handler",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "next-auth.session-token={{session_cookie}}" }
+            ],
+            "url": {
+              "raw": "{{api_url}}/uploadthing",
+              "host": ["{{api_url}}"],
+              "path": ["uploadthing"]
+            },
+            "description": "UploadThing route handler (GET/POST). Use the official UploadThing client SDK for actual uploads rather than calling this directly. Auth is enforced at the route level.\n\nSee: https://docs.uploadthing.com"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Server Actions (Reference Only)",
+      "description": "⚠️ **These are Next.js Server Actions — NOT standard HTTP REST endpoints.**\n\nThey are called by the React client via the Next.js Server Action RPC protocol:\n```\nPOST /presentation/[id]\nContent-Type: text/plain;charset=UTF-8\nNext-Action: <build-time-hash>\n\n[\"arg1\", \"arg2\"]\n```\nThe `Next-Action` header is generated at build time and cannot be constructed manually in Postman.\n\n**How to test:** Use the application UI, write Vitest integration tests (see `src/__tests__/ppt-generator/`), or use Playwright E2E tests (`e2e/`).",
+      "item": [
+        {
+          "name": "Presentation CRUD",
+          "description": "File: `src/app/_actions/presentation/presentationActions.ts`",
+          "item": [
+            {
+              "name": "[SA] createPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Server Action – not directly callable via Postman\n// Parameters:\n// {\n//   title: string (required),\n//   content: { slides: PlateSlide[] } (required),\n//   description?: string,\n//   outline?: string[],\n//   prompt?: string,\n//   theme?: string,\n//   language?: string,\n//   brandKitId?: string\n// }\n// Returns: { id: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Creates a new presentation. Linked to `session.user.id` as `userId`. Falls back to 'Untitled Presentation' if title is empty. Fires `presentation.created` webhook."
+              }
+            },
+            {
+              "name": "[SA] createEmptyPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: { title?: string, description?: string }\n// Returns: { id: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Creates a blank presentation with no slides. Used by the manual editor flow."
+              }
+            },
+            {
+              "name": "[SA] updatePresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Validated by UpdatePresentationSchema (Zod):\n// {\n//   id: string (required),\n//   title?: string (max 200),\n//   outline?: string[],\n//   prompt?: string (max 2000),\n//   theme?: string (max 50),\n//   imageSource?: 'ai' | 'stock',\n//   thumbnailUrl?: string (url)\n// }\n// Returns: { success: true, data: Presentation } | { success: false, error: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Updates presentation metadata. Validates ownership — only the owner (`userId` match) or ADMIN can update."
+              }
+            },
+            {
+              "name": "[SA] updatePresentationTitle",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string, title: string)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Lightweight inline title editing action."
+              }
+            },
+            {
+              "name": "[SA] deletePresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Deletes a single presentation. Validates ownership."
+              }
+            },
+            {
+              "name": "[SA] deletePresentations (bulk)",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (ids: string[])\n// Returns: { success: true, deletedCount: number }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Bulk delete. Only deletes presentations owned by the calling user — IDs not owned by the user are silently skipped."
+              }
+            },
+            {
+              "name": "[SA] getPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string)\n// Returns: Presentation | null" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getPresentationContent",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string)\n// Returns: { slides: PlateSlide[], theme?: string } | null" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Fetches only the Plate.js `content` JSON of a presentation (compact form for the editor)."
+              }
+            },
+            {
+              "name": "[SA] updatePresentationTheme",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string, theme: string)\n// e.g. theme = 'dark' | 'blue' | 'saffron' | ..." },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] duplicatePresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (id: string, newTitle?: string)\n// Returns: { id: string } – new presentation ID" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Creates a full copy (all slides) under the current user's account."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sharing & Listing",
+          "description": "Files: `fetchPresentations.ts` · `sharedPresentationActions.ts`",
+          "item": [
+            {
+              "name": "[SA] fetchPresentations",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: { page?: number, limit?: number }\n// Returns: { presentations: Presentation[], hasMore: boolean, total: number }\n// Ordered by updatedAt DESC" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] togglePresentationPublicStatus",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string, isPublic: boolean)\n// Returns: { success: boolean, message: string, data?: Presentation }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "When `isPublic: true`, anyone with the share link can view without logging in."
+              }
+            },
+            {
+              "name": "[SA] getSharedPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string)\n// Returns: Presentation | null (only if isPublic: true)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Smart Generation",
+          "description": "File: `smart-generation-actions.ts`",
+          "item": [
+            {
+              "name": "[SA] parseContentToPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (input: { type: 'text' | 'url' | 'youtube', content: string })\n// Returns: { title: string, outline: string[], estimatedSlides: number }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] parseURLContent",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (url: string)\n// Fetches web page, extracts text, returns outline" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] parseYouTubeVideo",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (url: string) – YouTube video URL" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] estimateSlideCount",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (content: string)\n// Returns: number (recommended slide count)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] autoDesignPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters:\n// (\n//   slides: PlateSlide[],\n//   options: {\n//     branding?: BrandKitData,\n//     targetAudience?: string,\n//     presentationType?: string\n//   }\n// )\n// Returns: PlateSlide[] – slides with updated layouts/styles" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Version Control",
+          "description": "File: `version-actions.ts`",
+          "item": [
+            {
+              "name": "[SA] createPresentationVersion",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: { presentationId: string, comment?: string, tags?: string[] }\n// Returns: { success: boolean, versionNumber?: number, error?: string }\n// Auto-increments version number, computes deep diff from previous version" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getPresentationVersions",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string)\n// Returns: { success: boolean, versions?: VersionSummary[] }\n// Ordered newest-first" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getPresentationVersion",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string, versionNumber: number)\n// Returns: { success: boolean, version?: { content, changes, metadata } }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] restorePresentationVersion",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string, versionNumber: number)\n// Returns: { success: boolean, error?: string }\n// Creates a new snapshot BEFORE restoring (non-destructive)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] comparePresentationVersions",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string, versionA: number, versionB: number)\n// Returns: { success: boolean, diff?: object }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export",
+          "description": "File: `exportPresentationActions.ts`",
+          "item": [
+            {
+              "name": "[SA] exportPresentation",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters:\n// (\n//   presentationId: string,\n//   format: 'pdf' | 'html' | 'png' | 'pptx',\n//   options?: { quality?: 'low'|'medium'|'high', includeNotes?: boolean, orientation?: 'landscape'|'portrait' }\n// )\n// Returns: { success: boolean, data?: Buffer|string, filename?: string, mimeType?: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "Delegates to `ExportService`. PDF/PNG use puppeteer (headless Chrome). HTML returns a self-contained file with navigation JS."
+              }
+            },
+            {
+              "name": "[SA] exportPresentationAsPDF",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string, options?: { quality?: 'low'|'medium'|'high', orientation?: 'landscape'|'portrait' })\n// Returns: { success: boolean, pdfBuffer?: Buffer }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] },
+                "description": "PDF shortcut. Puppeteer renders at 1920×1080. `quality: 'high'` sets deviceScaleFactor to 2."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Themes",
+          "description": "File: `theme-actions.ts`",
+          "item": [
+            {
+              "name": "[SA] createCustomTheme",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (formData: { name: string, primaryColor: string, secondaryColor?: string, fontFamily?: string, isPublic?: boolean })" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getUserCustomThemes",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// No parameters → Returns: CustomTheme[]" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getPublicCustomThemes",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// No parameters → Returns: CustomTheme[] (isPublic: true only)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] updateCustomTheme / deleteCustomTheme",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// update: (themeId: string, data: Partial<ThemeFormData>)\n// delete: (themeId: string)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Brand Kit",
+          "description": "File: `brand-kit-actions.ts`",
+          "item": [
+            {
+              "name": "[SA] createBrandKitAction",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (data: { name: string, primaryColor: string, secondaryColor?: string, accentColor?: string, logo?: string, fonts?: string[], isDefault?: boolean })" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getUserBrandKitsAction / getDefaultBrandKitAction",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// getUserBrandKitsAction: () → BrandKit[]\n// getDefaultBrandKitAction: () → BrandKit | null" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] updateBrandKitAction / deleteBrandKitAction",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// update: (brandKitId: string, data: Partial<BrandKitData>)\n// delete: (brandKitId: string)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] setDefaultBrandKitAction",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (brandKitId: string)\n// Clears isDefault from all other brand kits first" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] validateBrandColorsAction",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (colors: { primary: string, secondary?: string, accent?: string })\n// Returns: { valid: boolean, contrastRatios: Record<string, number>, warnings: string[] }\n// Validates WCAG contrast ratios for accessibility" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Webhooks",
+          "description": "File: `webhook-actions.ts`\n\nSupported event types: `presentation.created` · `presentation.updated` · `presentation.deleted` · `presentation.shared` · `presentation.exported`",
+          "item": [
+            {
+              "name": "[SA] registerWebhook",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters:\n// (url: string, events: WebhookEvent[])\n// WebhookEvent = 'presentation.created' | 'presentation.updated' | 'presentation.deleted' | 'presentation.shared' | 'presentation.exported'\n// Returns: { success: boolean, webhookId?: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getUserWebhooks",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// No parameters → Returns: Webhook[]" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] updateWebhook",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (webhookId: string, data: { url?: string, events?: WebhookEvent[], isActive?: boolean })" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] deleteWebhook",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (webhookId: string)" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] testWebhook",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (webhookId: string)\n// Sends a test payload to the webhook URL\n// Returns: { success: boolean, statusCode?: number, response?: string }" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Analytics",
+          "description": "File: `analytics-actions.ts`",
+          "item": [
+            {
+              "name": "[SA] trackEvent",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: ({ presentationId: string, eventType: string, eventData?: object })" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getPresentationAnalytics",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (presentationId: string)\n// Returns: PresentationAnalytics[]" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getUserAnalytics",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// No parameters\n// Returns: aggregated stats across all user presentations" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            },
+            {
+              "name": "[SA] getTrendingPresentations",
+              "request": {
+                "method": "POST", "header": [],
+                "body": { "mode": "raw", "raw": "// Parameters: (limit = 10, days = 7)\n// Returns: Presentation[] – most viewed in last N days" },
+                "url": { "raw": "{{base_url}}/_server_action", "host": ["{{base_url}}"], "path": ["_server_action"] }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
