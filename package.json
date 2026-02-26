@@ -183,6 +183,8 @@
     "@playwright/test": "^1.58.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/lodash.debounce": "^4.0.9",
     "@types/node": "^20.17.47",
@@ -190,6 +192,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/webpack": "^5.28.5",
+    "@vitejs/plugin-react": "^4.3.4",
     "postcss": "^8.5.3",
     "prettier": "^3.5.3",
     "prettier-plugin-organize-imports": "^4.3.0",
@@ -202,6 +205,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.2",
+    "vitest": "^2.0.0",
     "webpack": "^5.97.1"
   },
   "pnpm": {

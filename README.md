@@ -15,8 +15,6 @@
 
 </div>
 
-<https://github.com/user-attachments/assets/a21dbd49-75b8-4822-bcec-a75b581d9c60>
-
 ## 🔗 Quick Links
 
 - [Live Demo](http://deckshala.com)
@@ -270,12 +268,13 @@ deckshala/
 
 | Feature                      | Status            | Notes                                                                                         |
 | ---------------------------- | ----------------- | --------------------------------------------------------------------------------------------- |
-| Export to PowerPoint (.pptx) | 🟡 Partially Done | Works but the images and other component do not translate one to one                          |
-| Media embedding              | 🟡 Partially Done | Functionality is there, but ui/ux need improvement                                            |
+| Export to PowerPoint (.pptx) | 🟡 Partially Done | Works but images and other components do not translate one-to-one                             |
+| Media embedding              | 🟡 Partially Done | Functionality is there, but UI/UX needs improvement                                           |
 | Additional built-in themes   | 🟡 In Progress    | Currently have 9 themes, planning to add 15+ more                                             |
 | Mobile responsiveness        | 🟡 In Progress    | Improving layout and interactions for mobile devices                                          |
-| Advanced charts              | 🟡 Started        | Support for AI generated charts                                                               |
-| Write e2e tests              | 🔴 Not Started    | Writing test to check the core features, so that we can catch if any changes break anything   |
+| Advanced charts              | 🟡 In Progress    | Support for AI-generated charts                                                               |
+| CI / Automated testing       | 🟢 Done           | GitHub Actions CI with lint, type-check, unit tests, and Playwright E2E tests                 |
+| Write e2e tests              | 🟡 In Progress    | Core Playwright E2E tests added (presentation create, export); expanding coverage             |
 | Real-time collaboration      | 🔴 Not Started    | Multiple users editing the same presentation simultaneously                                   |
 | Export to PDF                | 🔴 Not Started    | High priority - allow users to download presentations as PDFs                                 |
 | Template library             | 🔴 Not Started    | Pre-built templates for common presentation types (pitch decks, reports, etc.)                |
@@ -286,7 +285,7 @@ deckshala/
 | AI presenter notes           | 🔴 Not Started    | Auto-generate speaker notes for each slide                                                    |
 | Custom font uploads          | 🔴 Not Started    | Allow users to upload and use their own fonts                                                 |
 | Plugin system                | 🔴 Not Started    | Allow community to build and share extensions                                                 |
-| API                          | 🔴 Not Started    | Allow developers to use DeckShala to generate presentation content in their own applications. |
+| API                          | 🔴 Not Started    | Allow developers to use DeckShala to generate presentation content in their own applications  |
 
 > 📝 **Note**: This roadmap is subject to change based on community feedback and priorities. Want to contribute to any of these features? Check out our [Contributing Guidelines](CONTRIBUTING.md)!
 
