@@ -1,0 +1,625 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // NOTE: When using mysql or sqlserver, uncomment the @db.Text annotations in model Account below
+  // Further reading:
+  // https://next-auth.js.org/adapters/prisma#create-the-prisma-schema
+  // https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference#string
+  url      = env("DATABASE_URL")
+}
+
+// Necessary for Next auth
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? // @db.Text
+  access_token             String? // @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? // @db.Text
+  session_state            String?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refresh_token_expires_in Int?
+
+  @@unique([provider, providerAccountId])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  headline      String?   @db.VarChar(100)
+  bio           String?   @db.Text
+  interests     String[]
+  location      String?
+  website       String?
+  accounts      Account[]
+
+  role      UserRole @default(USER)
+  hasAccess Boolean  @default(false)
+
+  // Document system
+  documents BaseDocument[]
+  favorites FavoriteDocument[]
+
+  CustomTheme    CustomTheme[]
+  GeneratedImage GeneratedImage[]
+
+  // Analytics
+  analytics PresentationAnalytics[]
+
+  // Versioning
+  versions PresentationVersion[]
+
+  // Templates
+  templates PresentationTemplate[]
+
+  // Brand Kits (Enterprise Feature)
+  brandKits BrandKit[]
+
+  // Webhooks
+  webhooks Webhook[]
+
+  // Comments
+  comments          PresentationComment[] @relation
+  resolvedComments  PresentationComment[] @relation("CommentResolver")
+
+  // Shares
+  sharesCreated  PresentationShare[] @relation("SharedBy")
+  sharesReceived PresentationShare[] @relation("SharedWith")
+
+  // Indexes for common queries
+  @@index([role, hasAccess])
+  @@index([createdAt])
+}
+
+enum DocumentType {
+  NOTE
+  DOCUMENT
+  DRAWING
+  DESIGN
+  STICKY_NOTES
+  MIND_MAP
+  RAG
+  RESEARCH_PAPER
+  FLIPBOOK
+  PRESENTATION
+}
+
+model BaseDocument {
+  id           String        @id @default(cuid())
+  title        String
+  type         DocumentType
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  thumbnailUrl String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  isPublic     Boolean       @default(false)
+  documentType String
+  // Relations to specific document types
+  presentation Presentation?
+
+  // Favorites
+  favorites FavoriteDocument[]
+
+  // Analytics
+  analytics PresentationAnalytics[]
+
+  // Versions
+  versions PresentationVersion[]
+
+  // Comments
+  comments PresentationComment[]
+
+  // Shares
+  shares PresentationShare[]
+
+  // Indexes for common queries
+  @@index([userId, updatedAt])
+  @@index([userId, createdAt])
+  @@index([type])
+}
+
+model Presentation {
+  id                String       @id @default(cuid())
+  content           Json // Presentation content including slides, theme, etc.
+  theme             String       @default("default")
+  imageSource       String       @default("ai") // The image model used for generating images
+  prompt            String? // The prompt used for generating the presentation
+  presentationStyle String? // The style of the presentation
+  language          String?      @default("en-US") // The language of the presentation
+  outline           String[] // Store the presentation outline
+  searchResults     Json? // Store the search results
+  base              BaseDocument @relation(fields: [id], references: [id], onDelete: Cascade)
+  templateId        String?
+  customThemeId     String? // Reference to custom theme if used
+  customTheme       CustomTheme? @relation(fields: [customThemeId], references: [id])
+  // Brand Kit Integration
+  brandKitId        String?
+  brandKit          BrandKit?    @relation(fields: [brandKitId], references: [id])
+  // Template Category for AI Generation
+  templateCategory  TemplateCategory?
+  aiGenerationMode  String? // e.g., "pitch-deck", "investor-deck"
+
+  // Collaboration
+  collaborators CollaborationSession[]
+  yjsState      Bytes? // Yjs document state for collaboration
+}
+
+// Real-time collaboration models
+model CollaborationSession {
+  id             String       @id @default(cuid())
+  presentationId String
+  presentation   Presentation @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  userId         String
+  userName       String
+  userEmail      String?
+  userImage      String?
+  color          String // User's cursor color
+  isActive       Boolean      @default(true)
+  lastSeenAt     DateTime     @default(now())
+  cursorPosition Json? // Last known cursor position
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([presentationId, userId])
+  @@index([presentationId, isActive])
+  @@index([presentationId, lastSeenAt])
+}
+
+model CollaborationRoom {
+  id             String   @id @default(cuid())
+  presentationId String   @unique
+  activeUsers    Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastActivity   DateTime @default(now())
+
+  @@index([presentationId, lastActivity])
+}
+
+model CustomTheme {
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logoUrl       String?
+  isPublic      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  themeData     Json // Store the complete theme configuration
+  presentations Presentation[]
+
+  @@index([userId])
+}
+
+model FavoriteDocument {
+  id         String       @id @default(uuid())
+  documentId String
+  document   BaseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id])
+}
+
+model GeneratedImage {
+  id        String   @id @default(cuid())
+  url       String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    String
+
+  // Indexes for common queries
+  @@index([userId, createdAt])
+}
+
+// Analytics and Monitoring
+model PresentationAnalytics {
+  id             String       @id @default(cuid())
+  presentationId String
+  presentation   BaseDocument @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType      String // view, edit, share, export, collaborate
+  eventData      Json?
+  sessionId      String?
+  ipAddress      String?
+  userAgent      String?
+  duration       Int? // in seconds
+  createdAt      DateTime     @default(now())
+
+  @@index([presentationId, createdAt])
+  @@index([userId, eventType])
+  @@index([sessionId])
+}
+
+// Presentation Versioning
+model PresentationVersion {
+  id             String       @id @default(cuid())
+  presentationId String
+  presentation   BaseDocument @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  versionNumber  Int
+  content        Json
+  changes        Json? // Delta/diff from previous version
+  createdBy      String
+  user           User         @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  comment        String?
+  tags           String[]
+  createdAt      DateTime     @default(now())
+
+  @@index([presentationId, versionNumber])
+  @@index([createdAt])
+}
+
+// AI Cache for faster generation and cost savings
+model AIGenerationCache {
+  id             String    @id @default(cuid())
+  cacheKey       String    @unique
+  prompt         String    @db.Text
+  model          String
+  provider       String
+  response       Json
+  tokensUsed     Int?
+  latencyMs      Int?
+  hitCount       Int       @default(0)
+  lastAccessedAt DateTime  @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([cacheKey])
+  @@index([expiresAt])
+  @@index([hitCount(sort: Desc)])
+}
+
+// Industry-Specific Template Categories
+enum TemplateCategory {
+  PITCH_DECK
+  SALES_DECK
+  INVESTOR_DECK
+  CLASSROOM_PPT
+  PROJECT_REPORT
+  MARKETING_PLAN
+  TECHNICAL_PRESENTATION
+  BUSINESS_PROPOSAL
+  QUARTERLY_REVIEW
+  PRODUCT_LAUNCH
+  TRAINING_MATERIAL
+  CONFERENCE_TALK
+  PORTFOLIO
+  CASE_STUDY
+  WEBINAR
+  CUSTOM
+}
+
+// Presentation Templates Marketplace
+model PresentationTemplate {
+  id                  String            @id @default(cuid())
+  name                String
+  description         String?           @db.Text
+  category            String // backward compatibility
+  templateCategory    TemplateCategory? // new industry-specific category
+  industryType        String? // e.g., "Technology", "Healthcare", "Finance"
+  tags                String[]
+  content             Json
+  structure           Json? // Slide structure definition for AI
+  aiPromptTemplate    String?           @db.Text // Template for AI prompt generation
+  defaultSlideCount   Int               @default(10)
+  requiredSections    String[] // e.g., ["problem", "solution", "team"]
+  thumbnailUrl        String?
+  previewImages       String[]
+  isPremium           Boolean           @default(false)
+  price               Decimal           @default(0) @db.Decimal(10, 2)
+  downloads           Int               @default(0)
+  rating              Decimal           @default(0) @db.Decimal(3, 2)
+  ratingCount         Int               @default(0)
+  createdBy           String
+  user                User              @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  isPublic            Boolean           @default(true)
+  featured            Boolean           @default(false)
+  brandKitCompatible  Boolean           @default(true)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([category, featured])
+  @@index([templateCategory])
+  @@index([downloads(sort: Desc)])
+  @@index([rating(sort: Desc)])
+  @@index([createdBy])
+}
+
+// Brand Kit System for Enterprise
+model BrandKit {
+  id                 String               @id @default(cuid())
+  userId             String
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationName   String
+  isDefault          Boolean              @default(false)
+  // Branding Assets
+  logoUrl            String?
+  logoSecondaryUrl   String?
+  logoIconUrl        String?
+  // Color Palette
+  primaryColor       String
+  secondaryColor     String?
+  accentColor        String?
+  backgroundColor    String?
+  textColor          String?
+  colorPalette       Json? // Additional colors array
+  // Typography
+  headingFont        String?
+  bodyFont           String?
+  fontPairings       Json?
+  // Templates
+  templateIds        String[]
+  customTemplates    Json?
+  // Usage Settings
+  isPremium          Boolean              @default(false)
+  isEnterprise       Boolean              @default(false)
+  allowCustomization Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  // Relations
+  presentations      Presentation[]
+  usage              BrandKitUsage[]
+
+  @@index([userId])
+  @@index([isDefault])
+  @@index([organizationName])
+}
+
+// Brand Kit Usage Tracking
+model BrandKitUsage {
+  id             String       @id @default(cuid())
+  brandKitId     String
+  brandKit       BrandKit     @relation(fields: [brandKitId], references: [id], onDelete: Cascade)
+  presentationId String
+  userId         String
+  usedAt         DateTime     @default(now())
+
+  @@index([brandKitId])
+  @@index([presentationId])
+}
+
+// Template Structure Presets (for AI generation)
+model TemplateStructure {
+  id               String           @id @default(cuid())
+  templateCategory TemplateCategory
+  name             String
+  description      String?          @db.Text
+  slideStructure   Json // JSON defining slide order, types, content guidelines
+  aiGuidelines     String?          @db.Text // Instructions for AI
+  examplePrompts   String[]
+  isDefault        Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([templateCategory])
+  @@index([isDefault])
+}
+
+// Webhooks for integrations
+model Webhook {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url              String
+  events           String[] // presentation.created, presentation.updated, etc
+  secret           String // for signing webhook payloads
+  isActive         Boolean   @default(true)
+  lastTriggeredAt  DateTime?
+  failureCount     Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([userId, isActive])
+}
+
+// AI Model Performance Metrics
+model ModelPerformanceMetric {
+  id                 String   @id @default(cuid())
+  provider           String
+  model              String
+  endpoint           String
+  totalRequests      Int      @default(0)
+  successfulRequests Int      @default(0)
+  failedRequests     Int      @default(0)
+  averageLatencyMs   Decimal? @db.Decimal(10, 2)
+  averageTokens      Decimal? @db.Decimal(10, 2)
+  totalCost          Decimal  @default(0) @db.Decimal(10, 4)
+  lastRequestAt      DateTime?
+  date               DateTime @db.Date
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([provider, model, date])
+  @@index([date(sort: Desc)])
+}
+
+// Presentation Comments and Feedback
+model PresentationComment {
+  id             String                 @id @default(cuid())
+  presentationId String
+  presentation   BaseDocument           @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slideId        String?
+  content        String                 @db.Text
+  position       Json? // x, y coordinates if comment is positioned on slide
+  resolved       Boolean                @default(false)
+  resolvedBy     String?
+  resolver       User?                  @relation("CommentResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  resolvedAt     DateTime?
+  parentId       String? // for threaded comments
+  parent         PresentationComment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies        PresentationComment[]  @relation("CommentReplies")
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([presentationId, resolved])
+  @@index([slideId])
+  @@index([parentId])
+}
+
+// Presentation Shares and Permissions
+model PresentationShare {
+  id             String       @id @default(cuid())
+  presentationId String
+  presentation   BaseDocument @relation(fields: [presentationId], references: [id], onDelete: Cascade)
+  sharedBy       String
+  owner          User         @relation("SharedBy", fields: [sharedBy], references: [id], onDelete: Cascade)
+  sharedWith     String? // null for public share links
+  recipient      User?        @relation("SharedWith", fields: [sharedWith], references: [id], onDelete: Cascade)
+  shareToken     String       @unique
+  permission     String // view, comment, edit
+  expiresAt      DateTime?
+  password       String?
+  viewCount      Int          @default(0)
+  lastViewedAt   DateTime?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  @@index([shareToken])
+  @@index([presentationId, isActive])
+  @@index([sharedWith])
+}
+
+// Smart Content Generation History
+model ContentGenerationHistory {
+  id             String   @id @default(cuid())
+  userId         String
+  sourceType     String // text, pdf, word, url, youtube, research-paper, meeting-notes, voice-transcript
+  sourceContent  String   @db.Text
+  sourceUrl      String?
+  sourceMetadata Json?
+  generatedSlides Int
+  presentationId String?
+  success        Boolean  @default(true)
+  errorMessage   String?  @db.Text
+  processingTime Int? // milliseconds
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sourceType])
+}
+
+// AI Co-Pilot Suggestions History
+model CopilotSuggestionHistory {
+  id             String   @id @default(cuid())
+  presentationId String
+  slideIndex     Int
+  suggestionType String // grammar, rewrite, simplify, clarity, speaker-notes, image
+  original       String   @db.Text
+  suggested      String   @db.Text
+  applied        Boolean  @default(false)
+  appliedAt      DateTime?
+  userId         String
+  confidence     Int // 0-100
+  createdAt      DateTime @default(now())
+
+  @@index([presentationId, slideIndex])
+  @@index([userId, createdAt])
+  @@index([suggestionType])
+}
+
+// Speaker Notes for Presentations
+model SpeakerNotes {
+  id             String   @id @default(cuid())
+  presentationId String
+  slideIndex     Int
+  notes          String   @db.Text
+  keyPoints      String[]
+  talkingTime    Int // estimated seconds
+  tips           String[]
+  generatedByAI  Boolean  @default(false)
+  userId         String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([presentationId, slideIndex])
+  @@index([presentationId])
+  @@index([userId])
+}
+
+// Auto Design History and Preferences
+model AutoDesignHistory {
+  id              String   @id @default(cuid())
+  presentationId  String
+  userId          String
+  themeId         String
+  themeName       String
+  appliedLayouts  Json
+  brandingRules   Json?
+  targetAudience  String?
+  presentationType String?
+  success         Boolean  @default(true)
+  processingTime  Int? // milliseconds
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([presentationId])
+  @@index([themeId])
+}
+
+// User Preferences for Smart Features
+model UserSmartPreferences {
+  id                          String   @id @default(cuid())
+  userId                      String   @unique
+  // Content Generation Preferences
+  preferredContentSources     String[] // types of content they usually use
+  defaultPresentationStyle    String   @default("professional")
+  defaultSlideCount           Int      @default(10)
+  // Auto Design Preferences
+  preferredThemeId            String?
+  autoApplyDesign             Boolean  @default(true)
+  customBrandingEnabled       Boolean  @default(false)
+  // Co-Pilot Preferences
+  enableGrammarCheck          Boolean  @default(true)
+  enableAutoSimplify          Boolean  @default(false)
+  enableSpeakerNotes          Boolean  @default(true)
+  enableImageSuggestions      Boolean  @default(true)
+  autoApplySuggestions        Boolean  @default(false)
+  suggestionSensitivity       String   @default("medium") // low, medium, high
+  // General
+  enableSmartFeatures         Boolean  @default(true)
+  onboardingCompleted         Boolean  @default(false)
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Smart Feature Usage Analytics
+model SmartFeatureUsage {
+  id             String   @id @default(cuid())
+  userId         String
+  featureType    String // content-parser, auto-design, ai-copilot
+  featureName    String // specific feature used
+  presentationId String?
+  duration       Int? // milliseconds
+  success        Boolean  @default(true)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([userId, featureType])
+  @@index([featureType, createdAt])
+}
