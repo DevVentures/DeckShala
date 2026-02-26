@@ -52,6 +52,7 @@ jobs:
       GOOGLE_CLIENT_ID: placeholder
       GOOGLE_CLIENT_SECRET: placeholder
       UPLOADTHING_TOKEN: placeholder
+      SKIP_ENV_VALIDATION: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,6 +82,14 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: lint
+    env:
+      DATABASE_URL: postgresql://user:pass@localhost:5432/deckshala
+      NEXTAUTH_SECRET: ci-secret-placeholder
+      NEXTAUTH_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: placeholder
+      GOOGLE_CLIENT_SECRET: placeholder
+      UPLOADTHING_TOKEN: placeholder
+      SKIP_ENV_VALIDATION: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,6 +127,7 @@ jobs:
       GOOGLE_CLIENT_ID: placeholder
       GOOGLE_CLIENT_SECRET: placeholder
       UPLOADTHING_TOKEN: placeholder
+      SKIP_ENV_VALIDATION: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -146,7 +156,7 @@ jobs:
         run: pnpm build
 
       - name: Run E2E tests
-        run: pnpm test:e2e
+        run: pnpm exec playwright test --project=chromium
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

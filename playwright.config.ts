@@ -82,7 +82,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm dev',
+    // In CI the app is pre-built by the build job; use next start (faster, no file watcher).
+    // Locally fall back to the full dev server.
+    command: process.env.CI ? 'pnpm start:next' : 'pnpm dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
