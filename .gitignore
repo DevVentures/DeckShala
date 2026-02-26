@@ -1,0 +1,83 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+/coverage
+/playwright-report
+/test-results
+/.nyc_output
+
+# ─── Next.js ──────────────────────────────────────────────────────────────────
+/.next/
+/out/
+
+# ─── Production builds ────────────────────────────────────────────────────────
+/build
+/dist
+
+# ─── Operating system ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.pem
+
+# ─── Debug logs ───────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ─── Environment files ────────────────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+# Keep .env.example in version control — it's the template for contributors
+
+# ─── Vercel ───────────────────────────────────────────────────────────────────
+.vercel
+
+# ─── TypeScript ───────────────────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── Editor / IDE ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# ─── Prisma ───────────────────────────────────────────────────────────────────
+prisma/*.db
+prisma/*.db-journal
+
+# ─── Cache & temporary ────────────────────────────────────────────────────────
+.cache/
+.turbo/
+.swc/
+*.tgz
+
+# ─── pnpm ─────────────────────────────────────────────────────────────────────
+.pnpm-store/
+
+# ─── Storybook ────────────────────────────────────────────────────────────────
+storybook-static/
+
+# ─── AI / secrets ─────────────────────────────────────────────────────────────
+.secrets
+*.key
+*.pem
+*.p12
+*.cert
+
+# ─── Internal workflow docs (not for public repo) ─────────────────────────────
+GIT_WORKFLOW.md
