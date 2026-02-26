@@ -185,7 +185,7 @@ export class AccessControl {
   ): Promise<{ allowed: boolean; reason?: string }> {
     try {
       // Check basic permission
-      const hasBasicPermission = this.hasPermission(userRole, resource, action);
+      const hasBasicPermission = AccessControl.hasPermission(userRole, resource, action);
       if (!hasBasicPermission) {
         SecurityAuditLogger.logAccess(resource, action, userId, false);
         return { allowed: false, reason: "Insufficient permissions" };
@@ -193,7 +193,7 @@ export class AccessControl {
 
       // Check resource ownership for certain resources
       if (resourceId && db) {
-        const ownershipCheck = await this.checkOwnership(
+        const ownershipCheck = await AccessControl.checkOwnership(
           userId,
           userRole,
           resource,
@@ -324,7 +324,7 @@ export class AccessControl {
     resource: ResourceType,
     action: Action
   ): boolean {
-    return this.hasPermission(userRole, resource, action);
+    return AccessControl.hasPermission(userRole, resource, action);
   }
 
   /**
@@ -343,11 +343,11 @@ export class AccessControl {
  * Authorization middleware for server actions
  */
 export function requireAuth(action: Action, resource: ResourceType) {
-  return function (
+  return (
     target: any,
     propertyKey: string,
     descriptor: PropertyDescriptor
-  ) {
+  ) => {
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {

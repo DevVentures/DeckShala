@@ -6,10 +6,10 @@ import {
   createSmartPresentation,
   parseContentToPresentation,
 } from "@/app/_actions/presentation/smart-generation-actions";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 import { useToast } from "@/components/ui/use-toast";
-import type { BrandingRules } from "@/lib/auto-design-engine";
-import type { ContentInput } from "@/lib/content-parser-service";
+import { type BrandingRules } from "@/lib/auto-design-engine";
+import { type ContentInput } from "@/lib/content-parser-service";
 import { useCallback, useState } from "react";
 
 /**

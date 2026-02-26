@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

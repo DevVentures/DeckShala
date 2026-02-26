@@ -1,6 +1,6 @@
 import { OllamaService } from "./ollama-service";
 import { logger } from "./logger";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 
 /**
  * AI Slide Enhancer Service
@@ -296,7 +296,7 @@ Return JSON array:
 
     for (const slide of slides) {
       try {
-        const result = await this.enhanceSlide(
+        const result = await AISlideEnhancer.enhanceSlide(
           slide.content,
           slide.index,
           options

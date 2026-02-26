@@ -1,4 +1,4 @@
-import type { Page, Download } from '@playwright/test';
+import { type Page, type Download } from '@playwright/test';
 
 /**
  * Wait for network to be idle

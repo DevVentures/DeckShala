@@ -1,5 +1,5 @@
-import { Server as HTTPServer } from "http";
-import { Server as SocketIOServer, Socket } from "socket.io";
+import { type Server as HTTPServer } from "http";
+import { Server as SocketIOServer, type Socket } from "socket.io";
 import * as Y from "yjs";
 import { YSocketIO, type Persistence } from "y-socket.io/dist/server";
 import { db } from "@/server/db";

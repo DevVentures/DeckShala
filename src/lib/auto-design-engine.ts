@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { OllamaService } from "./ollama-service";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 
 /**
  * Auto Design & Theme Engine
@@ -245,7 +245,7 @@ export class AutoDesignEngine {
       });
 
       // Step 1: Analyze content and select appropriate theme
-      const theme = await this.selectTheme(slides, options);
+      const theme = await AutoDesignEngine.selectTheme(slides, options);
 
       // Step 2: Apply layout to each slide
       const designedSlides: PlateSlide[] = [];
@@ -254,7 +254,7 @@ export class AutoDesignEngine {
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
         if (!slide) continue;
-        const design = await this.designSlide(slide, theme, i, options);
+        const design = await AutoDesignEngine.designSlide(slide, theme, i, options);
 
         designedSlides.push(design.slide);
         appliedDesigns.push(design.suggestions);
@@ -288,7 +288,7 @@ export class AutoDesignEngine {
   ): Promise<DesignTheme> {
     // Extract text from slides for analysis
     const slideTexts = slides
-      .map((slide) => this.extractTextFromSlide(slide))
+      .map((slide) => AutoDesignEngine.extractTextFromSlide(slide))
       .join("\n");
 
     const prompt = `
@@ -301,7 +301,7 @@ Target Audience: ${options.targetAudience || "general"}
 Presentation Type: ${options.presentationType || "business"}
 
 Available themes:
-${this.THEMES.map((t) => `- ${t.name}: ${t.id}`).join("\n")}
+${AutoDesignEngine.THEMES.map((t) => `- ${t.name}: ${t.id}`).join("\n")}
 
 Consider:
 1. Content formality
@@ -319,7 +319,7 @@ Respond with only the theme ID (e.g., "modern-blue").
 
     const themeId = response.trim().toLowerCase().replace(/['"]/g, "");
     const selectedTheme =
-      this.THEMES.find((t) => t.id === themeId) || this.THEMES[0];
+      AutoDesignEngine.THEMES.find((t) => t.id === themeId) || AutoDesignEngine.THEMES[0];
 
     if (!selectedTheme) {
       throw new Error("No theme available");
@@ -327,7 +327,7 @@ Respond with only the theme ID (e.g., "modern-blue").
 
     // Apply branding overrides if provided
     if (options.branding) {
-      return this.applyBranding(selectedTheme, options.branding);
+      return AutoDesignEngine.applyBranding(selectedTheme, options.branding);
     }
 
     return selectedTheme;
@@ -345,10 +345,10 @@ Respond with only the theme ID (e.g., "modern-blue").
     slide: PlateSlide;
     suggestions: DesignSuggestions;
   }> {
-    const slideText = this.extractTextFromSlide(slide);
+    const slideText = AutoDesignEngine.extractTextFromSlide(slide);
 
     // Determine optimal layout
-    const layout = this.selectLayout(slide, slideText);
+    const layout = AutoDesignEngine.selectLayout(slide, slideText);
 
     // Generate design suggestions
     const suggestions: DesignSuggestions = {
@@ -359,17 +359,17 @@ Respond with only the theme ID (e.g., "modern-blue").
         bodySize: "1.125rem",
         lineHeight: "1.6",
       },
-      icons: await this.suggestIcons(slideText),
+      icons: await AutoDesignEngine.suggestIcons(slideText),
       spacing: {
         contentPadding: `${theme.spacing.slide}px`,
         elementGap: `${theme.spacing.section}px`,
         lineHeight: "1.6",
       },
-      images: await this.suggestImages(slideText),
+      images: await AutoDesignEngine.suggestImages(slideText),
     };
 
     // Apply design to slide
-    const designedSlide = this.applyDesignToSlide(slide, theme, suggestions);
+    const designedSlide = AutoDesignEngine.applyDesignToSlide(slide, theme, suggestions);
 
     return {
       slide: designedSlide,
@@ -658,7 +658,7 @@ Provide 1-2 image suggestions in JSON format:
    * Get all available themes
    */
   static getAvailableThemes(): DesignTheme[] {
-    return this.THEMES;
+    return AutoDesignEngine.THEMES;
   }
 
   /**

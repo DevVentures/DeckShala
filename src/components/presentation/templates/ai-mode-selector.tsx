@@ -12,7 +12,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TemplateService, type IndustryTemplate } from "@/lib/template-service";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 import {
   ArrowRight,
   Briefcase,

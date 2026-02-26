@@ -1,6 +1,6 @@
 import { PresentationGenerationManager } from "@/components/presentation/dashboard/PresentationGenerationManager";
 import PresentationHeader from "@/components/presentation/presentation-page/PresentationHeader";
-import type { Metadata } from "next";
+import { type Metadata } from "next";
 import type React from "react";
 
 export const metadata: Metadata = {

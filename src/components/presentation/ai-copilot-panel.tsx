@@ -4,7 +4,7 @@ import {
   analyzeSlideWithCopilot,
   applyCopilotSuggestion,
 } from "@/app/_actions/presentation/smart-generation-actions";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

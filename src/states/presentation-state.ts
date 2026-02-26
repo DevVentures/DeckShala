@@ -160,7 +160,6 @@ export const usePresentationState = create<PresentationState>()(
       currentSlideIndex: 0,
       isThemeCreatorOpen: false,
       config: {},
-      pendingInsertNode: null,
 
       // Sidebar states
       isSidebarCollapsed: false,
@@ -177,7 +176,6 @@ export const usePresentationState = create<PresentationState>()(
       setSlides: (slides) => {
         set({ slides });
       },
-      setPendingInsertNode: (node) => set({ pendingInsertNode: node }),
       setConfig: (config) => set({ config }),
       startRootImageGeneration: (slideId, query) =>
         set((state) => ({

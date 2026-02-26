@@ -44,7 +44,9 @@ export default function GlobalError({ error, reset }: ErrorPageProps) {
           </Button>
           <Button
             variant="outline"
-            onClick={() => (window.location.href = "/presentation")}
+            onClick={() => {
+              window.location.href = "/presentation";
+            }}
           >
             Go to Dashboard
           </Button>

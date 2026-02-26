@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { OllamaService } from "./ollama-service";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 
 /**
  * Real-Time AI Co-Pilot Editor Service
@@ -100,17 +100,17 @@ export class AICopilotService {
     readability?: ReadabilityScore;
   }> {
     try {
-      const slideText = this.extractTextFromSlide(slide);
+      const slideText = AICopilotService.extractTextFromSlide(slide);
       const suggestions: CopilotSuggestion[] = [];
 
       // Run analyses in parallel
       const analyses = await Promise.all([
-        options.checkGrammar ? this.checkGrammar(slideText, slideIndex) : null,
+        options.checkGrammar ? AICopilotService.checkGrammar(slideText, slideIndex) : null,
         options.simplifyLanguage
-          ? this.simplifyLanguage(slideText, slideIndex)
+          ? AICopilotService.simplifyLanguage(slideText, slideIndex)
           : null,
-        this.improveBullets(slideText, slideIndex),
-        this.checkClarity(slideText, slideIndex),
+        AICopilotService.improveBullets(slideText, slideIndex),
+        AICopilotService.checkClarity(slideText, slideIndex),
       ]);
 
       // Collect all suggestions
@@ -123,17 +123,17 @@ export class AICopilotService {
       // Generate speaker notes if requested
       let speakerNotes: SpeakerNotes | undefined;
       if (options.generateSpeakerNotes) {
-        speakerNotes = await this.generateSpeakerNotes(slideText, slideIndex);
+        speakerNotes = await AICopilotService.generateSpeakerNotes(slideText, slideIndex);
       }
 
       // Check readability if requested
       let readability: ReadabilityScore | undefined;
       if (options.checkReadability) {
-        readability = this.calculateReadability(slideText);
+        readability = AICopilotService.calculateReadability(slideText);
       }
 
       // Store active suggestions
-      this.activeSuggestions.set(`slide-${slideIndex}`, suggestions);
+      AICopilotService.activeSuggestions.set(`slide-${slideIndex}`, suggestions);
 
       logger.info("Copilot: Analysis complete", {
         slideIndex,
@@ -580,7 +580,7 @@ Limit to 2-3 highly relevant suggestions.
 
     // Replace original text with suggested text in content
     if (updatedSlide.content) {
-      updatedSlide.content = this.replaceText(
+      updatedSlide.content = AICopilotService.replaceText(
         updatedSlide.content,
         suggestion.original,
         suggestion.suggested
@@ -609,7 +609,7 @@ Limit to 2-3 highly relevant suggestions.
       if (child.children) {
         return {
           ...child,
-          children: this.replaceText(child.children, original, suggested),
+          children: AICopilotService.replaceText(child.children, original, suggested),
         };
       }
 
@@ -621,7 +621,7 @@ Limit to 2-3 highly relevant suggestions.
    * Get active suggestions for a slide
    */
   static getActiveSuggestions(slideIndex: number): CopilotSuggestion[] {
-    return this.activeSuggestions.get(`slide-${slideIndex}`) || [];
+    return AICopilotService.activeSuggestions.get(`slide-${slideIndex}`) || [];
   }
 
   /**
@@ -629,9 +629,9 @@ Limit to 2-3 highly relevant suggestions.
    */
   static clearSuggestions(slideIndex?: number): void {
     if (slideIndex !== undefined) {
-      this.activeSuggestions.delete(`slide-${slideIndex}`);
+      AICopilotService.activeSuggestions.delete(`slide-${slideIndex}`);
     } else {
-      this.activeSuggestions.clear();
+      AICopilotService.activeSuggestions.clear();
     }
   }
 
@@ -679,7 +679,7 @@ Limit to 2-3 highly relevant suggestions.
       const batch = slides.slice(i, i + batchSize);
       const analyses = await Promise.all(
         batch.map((slide, index) =>
-          this.analyzeSlide(slide, i + index, options)
+          AICopilotService.analyzeSlide(slide, i + index, options)
         )
       );
 

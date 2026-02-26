@@ -16,7 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { SlideEnhancementResult } from "@/lib/ai-slide-enhancer";
+import { type SlideEnhancementResult } from "@/lib/ai-slide-enhancer";
 import {
   Check,
   Image,

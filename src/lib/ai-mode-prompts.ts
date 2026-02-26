@@ -6,7 +6,7 @@
  * best practices for each presentation type.
  */
 
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 
 export interface AIModePrompt {
   systemPrompt: string;

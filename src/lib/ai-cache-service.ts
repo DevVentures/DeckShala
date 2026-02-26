@@ -32,7 +32,7 @@ export class AIGenerationCacheService {
     provider: string
   ): Promise<{ response: unknown; metadata: { tokensUsed?: number; latencyMs?: number } } | null> {
     try {
-      const cacheKey = this.generateCacheKey(prompt, model, provider);
+      const cacheKey = AIGenerationCacheService.generateCacheKey(prompt, model, provider);
 
       const cached = await db.aIGenerationCache.findUnique({
         where: { cacheKey },
@@ -91,8 +91,8 @@ export class AIGenerationCacheService {
     metadata?: { tokensUsed?: number; latencyMs?: number }
   ): Promise<void> {
     try {
-      const cacheKey = this.generateCacheKey(prompt, options.model, options.provider);
-      const expiresAt = new Date(Date.now() + (options.expiresIn ?? this.DEFAULT_EXPIRY) * 1000);
+      const cacheKey = AIGenerationCacheService.generateCacheKey(prompt, options.model, options.provider);
+      const expiresAt = new Date(Date.now() + (options.expiresIn ?? AIGenerationCacheService.DEFAULT_EXPIRY) * 1000);
 
       await db.aIGenerationCache.upsert({
         where: { cacheKey },

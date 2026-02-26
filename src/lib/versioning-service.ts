@@ -174,7 +174,7 @@ export class VersioningService {
     restoredBy: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const version = await this.getVersion(presentationId, versionNumber);
+      const version = await VersioningService.getVersion(presentationId, versionNumber);
 
       if (!version) {
         return { success: false, error: "Version not found" };
@@ -194,7 +194,7 @@ export class VersioningService {
       });
 
       // Create a new version marking this as a restore
-      await this.createVersion({
+      await VersioningService.createVersion({
         presentationId,
         content: version.content,
         createdBy: restoredBy,
@@ -235,8 +235,8 @@ export class VersioningService {
     };
   } | null> {
     try {
-      const v1 = await this.getVersion(presentationId, version1);
-      const v2 = await this.getVersion(presentationId, version2);
+      const v1 = await VersioningService.getVersion(presentationId, version1);
+      const v2 = await VersioningService.getVersion(presentationId, version2);
 
       if (!v1 || !v2) {
         return null;
@@ -322,7 +322,7 @@ export class VersioningService {
         (Date.now() - lastVersion.createdAt.getTime()) > 10 * 60 * 1000;
 
       if (shouldAutoSave) {
-        await this.createVersion({
+        await VersioningService.createVersion({
           presentationId,
           content,
           createdBy: userId,

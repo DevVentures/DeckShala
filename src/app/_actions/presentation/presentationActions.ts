@@ -5,7 +5,7 @@ import { logger } from "@/lib/logger";
 import { auth } from "@/server/auth";
 import { db } from "@/server/db";
 import { type InputJsonValue } from "@prisma/client/runtime/library";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 
 export async function createPresentation({
   content,

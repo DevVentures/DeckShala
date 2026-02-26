@@ -12,7 +12,7 @@
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, type NextResponse } from "next/server";
 import crypto from "crypto";
 
 // Rate limiting configuration
@@ -115,9 +115,9 @@ export class CSRFProtection {
    */
   static generateToken(sessionId: string): string {
     const timestamp = Date.now().toString();
-    const random = crypto.randomBytes(this.TOKEN_LENGTH).toString("hex");
+    const random = crypto.randomBytes(CSRFProtection.TOKEN_LENGTH).toString("hex");
     const data = `${sessionId}:${timestamp}:${random}`;
-    const hash = crypto.createHmac("sha256", this.SECRET).update(data).digest("hex");
+    const hash = crypto.createHmac("sha256", CSRFProtection.SECRET).update(data).digest("hex");
     return Buffer.from(`${data}:${hash}`).toString("base64");
   }
 
@@ -143,7 +143,7 @@ export class CSRFProtection {
 
       // Verify hash
       const data = `${tokenSessionId}:${timestamp}:${random}`;
-      const expectedHash = crypto.createHmac("sha256", this.SECRET).update(data).digest("hex");
+      const expectedHash = crypto.createHmac("sha256", CSRFProtection.SECRET).update(data).digest("hex");
 
       return hash === expectedHash;
     } catch (error) {
@@ -232,19 +232,19 @@ export class InputSanitizer {
 
     switch (type) {
       case "html":
-        return this.sanitizeHTML(input);
+        return InputSanitizer.sanitizeHTML(input);
       case "sql":
-        return this.sanitizeSQL(input);
+        return InputSanitizer.sanitizeSQL(input);
       case "email":
-        return this.sanitizeEmail(input);
+        return InputSanitizer.sanitizeEmail(input);
       case "filename":
-        return this.sanitizeFilename(input);
+        return InputSanitizer.sanitizeFilename(input);
       case "url":
-        return this.sanitizeURL(input);
+        return InputSanitizer.sanitizeURL(input);
       case "json":
-        return this.sanitizeJSON(input);
+        return InputSanitizer.sanitizeJSON(input);
       default:
-        return this.sanitizeHTML(input);
+        return InputSanitizer.sanitizeHTML(input);
     }
   }
 
@@ -253,31 +253,31 @@ export class InputSanitizer {
    */
   static comprehensive(input: any): any {
     if (typeof input === 'string') {
-      return this.sanitizeHTML(input);
+      return InputSanitizer.sanitizeHTML(input);
     }
 
     if (Array.isArray(input)) {
-      return input.map(item => this.comprehensive(item));
+      return input.map(item => InputSanitizer.comprehensive(item));
     }
 
     if (typeof input === 'object' && input !== null) {
       const sanitized: any = {};
       for (const key in input) {
-        if (input.hasOwnProperty(key)) {
+        if (Object.hasOwn(input, key)) {
           const value = input[key];
 
           // Apply specific sanitization based on field name
           if (key.toLowerCase().includes('email')) {
-            sanitized[key] = typeof value === 'string' ? this.sanitizeEmail(value) : value;
+            sanitized[key] = typeof value === 'string' ? InputSanitizer.sanitizeEmail(value) : value;
           } else if (key.toLowerCase().includes('url') || key.toLowerCase().includes('website')) {
-            sanitized[key] = typeof value === 'string' ? this.sanitizeURL(value) : value;
+            sanitized[key] = typeof value === 'string' ? InputSanitizer.sanitizeURL(value) : value;
           } else if (key.toLowerCase().includes('filename')) {
-            sanitized[key] = typeof value === 'string' ? this.sanitizeFilename(value) : value;
+            sanitized[key] = typeof value === 'string' ? InputSanitizer.sanitizeFilename(value) : value;
           } else if (typeof value === 'string') {
             // Default to HTML sanitization for strings
-            sanitized[key] = this.sanitizeHTML(value).replace(/DROP\s+TABLE/gi, '').replace(/SELECT\s+\*/gi, '');
+            sanitized[key] = InputSanitizer.sanitizeHTML(value).replace(/DROP\s+TABLE/gi, '').replace(/SELECT\s+\*/gi, '');
           } else if (typeof value === 'object' || Array.isArray(value)) {
-            sanitized[key] = this.comprehensive(value);
+            sanitized[key] = InputSanitizer.comprehensive(value);
           } else {
             sanitized[key] = value;
           }
@@ -409,8 +409,8 @@ export class EncryptionUtils {
   static encrypt(text: string): string {
     try {
       const iv = crypto.randomBytes(16);
-      const key = crypto.scryptSync(this.KEY, "salt", 32);
-      const cipher = crypto.createCipheriv(this.ALGORITHM, key, iv);
+      const key = crypto.scryptSync(EncryptionUtils.KEY, "salt", 32);
+      const cipher = crypto.createCipheriv(EncryptionUtils.ALGORITHM, key, iv);
 
       let encrypted = cipher.update(text, "utf8", "hex");
       encrypted += cipher.final("hex");
@@ -438,9 +438,9 @@ export class EncryptionUtils {
       }
       const iv = Buffer.from(ivHex, "hex");
       const authTag = Buffer.from(authTagHex, "hex");
-      const key = crypto.scryptSync(this.KEY, "salt", 32);
+      const key = crypto.scryptSync(EncryptionUtils.KEY, "salt", 32);
 
-      const decipher = crypto.createDecipheriv(this.ALGORITHM, key, iv);
+      const decipher = crypto.createDecipheriv(EncryptionUtils.ALGORITHM, key, iv);
       decipher.setAuthTag(authTag);
 
       const decrypted = decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
@@ -463,7 +463,7 @@ export class EncryptionUtils {
    * Verify password against hash
    */
   static async verifyPassword(password: string, hash: string): Promise<boolean> {
-    const passwordHash = this.hashPassword(password);
+    const passwordHash = EncryptionUtils.hashPassword(password);
     return passwordHash === hash;
   }
 

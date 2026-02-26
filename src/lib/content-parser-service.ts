@@ -1,6 +1,6 @@
 import { logger } from "./logger";
 import { OllamaService } from "./ollama-service";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
 
 /**
  * Smart Content-to-Presentation Generator Service
@@ -78,13 +78,13 @@ export class ContentParserService {
       });
 
       // Step 1: Parse content based on type
-      const parsedContent = await this.parseContent(input);
+      const parsedContent = await ContentParserService.parseContent(input);
 
       // Step 2: Extract key points and structure
-      const structuredContent = await this.structureContent(parsedContent);
+      const structuredContent = await ContentParserService.structureContent(parsedContent);
 
       // Step 3: Generate presentation slides
-      const presentation = await this.generatePresentation(structuredContent);
+      const presentation = await ContentParserService.generatePresentation(structuredContent);
 
       logger.info("ContentParser: Successfully generated presentation", {
         slidesCount: presentation.slides.length,
@@ -105,21 +105,21 @@ export class ContentParserService {
   ): Promise<ParsedContent> {
     switch (input.type) {
       case "text":
-        return this.parseTextContent(input.content);
+        return ContentParserService.parseTextContent(input.content);
       case "pdf":
-        return this.parsePDFContent(input);
+        return ContentParserService.parsePDFContent(input);
       case "word":
-        return this.parseWordContent(input);
+        return ContentParserService.parseWordContent(input);
       case "url":
-        return this.parseURLContent(input.content);
+        return ContentParserService.parseURLContent(input.content);
       case "youtube":
-        return this.parseYouTubeContent(input.content);
+        return ContentParserService.parseYouTubeContent(input.content);
       case "research-paper":
-        return this.parseResearchPaper(input);
+        return ContentParserService.parseResearchPaper(input);
       case "meeting-notes":
-        return this.parseMeetingNotes(input.content);
+        return ContentParserService.parseMeetingNotes(input.content);
       case "voice-transcript":
-        return this.parseVoiceTranscript(input.content);
+        return ContentParserService.parseVoiceTranscript(input.content);
       default:
         throw new Error(`Unsupported content type: ${input.type}`);
     }
@@ -208,7 +208,7 @@ Respond in JSON format:
         );
       }
 
-      return this.parseTextContent(extractedText);
+      return ContentParserService.parseTextContent(extractedText);
     } catch (error) {
       logger.error("Failed to parse PDF", error as Error);
       throw error;
@@ -227,7 +227,7 @@ Respond in JSON format:
       throw new Error("Word document text content is required");
     }
 
-    return this.parseTextContent(input.content);
+    return ContentParserService.parseTextContent(input.content);
   }
 
   /**
@@ -247,7 +247,7 @@ Respond in JSON format:
         .replace(/\s+/g, " ")
         .trim();
 
-      return this.parseTextContent(textContent);
+      return ContentParserService.parseTextContent(textContent);
     } catch (error) {
       logger.error("Failed to parse URL", error as Error);
       throw error;
@@ -261,7 +261,7 @@ Respond in JSON format:
     url: string
   ): Promise<ParsedContent> {
     // Extract video ID
-    const videoId = this.extractYouTubeVideoId(url);
+    const videoId = ContentParserService.extractYouTubeVideoId(url);
 
     if (!videoId) {
       throw new Error("Invalid YouTube URL");

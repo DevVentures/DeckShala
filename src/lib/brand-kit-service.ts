@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { logger } from "./logger";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 
 /**
  * Brand Kit Service
@@ -322,8 +322,8 @@ export class BrandKitService {
 
     // Check contrast ratio (simplified - would use proper WCAG algorithm in production)
     if (colors.background && colors.text) {
-      const bgLuminance = this.getRelativeLuminance(colors.background);
-      const textLuminance = this.getRelativeLuminance(colors.text);
+      const bgLuminance = BrandKitService.getRelativeLuminance(colors.background);
+      const textLuminance = BrandKitService.getRelativeLuminance(colors.text);
       const contrast = (Math.max(bgLuminance, textLuminance) + 0.05) /
         (Math.min(bgLuminance, textLuminance) + 0.05);
 

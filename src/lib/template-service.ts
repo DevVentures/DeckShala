@@ -1,6 +1,6 @@
 import { db } from "@/server/db";
 import { logger } from "./logger";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 
 /**
  * Template Service
@@ -357,13 +357,13 @@ export class TemplateService {
       });
 
       if (!template) {
-        return this.getDefaultStructureForCategory(category);
+        return TemplateService.getDefaultStructureForCategory(category);
       }
 
       return template.structure as TemplateStructure;
     } catch (error) {
       logger.error("Failed to fetch template structure", error as Error, { category });
-      return this.getDefaultStructureForCategory(category);
+      return TemplateService.getDefaultStructureForCategory(category);
     }
   }
 
@@ -375,7 +375,7 @@ export class TemplateService {
     userInput: string,
     brandKit?: any
   ): string {
-    const template = this.getIndustryTemplates().find((t) => t.category === category);
+    const template = TemplateService.getIndustryTemplates().find((t) => t.category === category);
 
     if (!template) {
       return userInput;

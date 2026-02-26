@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { AlertCircle } from "lucide-react";
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;

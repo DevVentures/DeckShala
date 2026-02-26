@@ -1,7 +1,7 @@
-import { PDFDocument, rgb, StandardFonts, PDFPage } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, type PDFPage } from "pdf-lib";
 import { logger } from "@/lib/logger";
 import { type PlateSlide, type PlateNode } from "@/components/presentation/utils/parser";
-import type { Descendant } from "platejs";
+import { type Descendant } from "platejs";
 
 interface TextNode {
   text: string;

@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TemplateService, type IndustryTemplate } from "@/lib/template-service";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 import { ArrowRight, Search, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

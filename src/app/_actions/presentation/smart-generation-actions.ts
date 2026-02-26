@@ -4,9 +4,9 @@ import { ContentParserService } from "@/lib/content-parser-service";
 import { AutoDesignEngine } from "@/lib/auto-design-engine";
 import { AICopilotService } from "@/lib/ai-copilot-service";
 import { logger } from "@/lib/logger";
-import type { ContentInput } from "@/lib/content-parser-service";
-import type { PlateSlide } from "@/components/presentation/utils/parser";
-import type { BrandingRules } from "@/lib/auto-design-engine";
+import { type ContentInput } from "@/lib/content-parser-service";
+import { type PlateSlide } from "@/components/presentation/utils/parser";
+import { type BrandingRules } from "@/lib/auto-design-engine";
 
 /**
  * Server Actions for Smart Content-to-Presentation Generator
@@ -423,8 +423,8 @@ export async function createSmartPresentation(
     const presentation = await ContentParserService.parseAndGenerate(input);
 
     let designedSlides = presentation.slides;
-    let theme: any = undefined;
-    let copilotAnalysis: any = undefined;
+    let theme: any ;
+    let copilotAnalysis: any ;
 
     // Step 2: Auto-design if requested
     if (options.autoDesign) {

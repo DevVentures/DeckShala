@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { SlideEnhancementResult } from "@/lib/ai-slide-enhancer";
+import { type SlideEnhancementResult } from "@/lib/ai-slide-enhancer";
 import {
   Check,
   Image,

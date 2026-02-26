@@ -4,9 +4,9 @@ import { createEmptyPresentation } from "@/app/_actions/presentation/presentatio
 import { AIModeSelector } from "@/components/presentation/templates/ai-mode-selector";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
-import type { IndustryTemplate } from "@/lib/template-service";
+import { type IndustryTemplate } from "@/lib/template-service";
 import { usePresentationState } from "@/states/presentation-state";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 import { Sparkles, Wand2, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

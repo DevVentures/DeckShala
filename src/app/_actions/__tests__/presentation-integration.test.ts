@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { db } from '@/server/db';
-import type { Session } from 'next-auth';
+import { type Session } from 'next-auth';
 
 // Mock the auth module
 vi.mock('@/server/auth', () => ({

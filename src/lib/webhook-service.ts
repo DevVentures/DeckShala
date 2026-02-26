@@ -100,7 +100,7 @@ export class WebhookService {
 
       // Send webhooks in parallel
       await Promise.allSettled(
-        webhooks.map(webhook => this.sendWebhook(webhook.id, webhook.url, webhook.secret, payload))
+        webhooks.map(webhook => WebhookService.sendWebhook(webhook.id, webhook.url, webhook.secret, payload))
       );
 
       logger.info("Webhooks triggered", {
@@ -294,7 +294,7 @@ export class WebhookService {
         userId,
       };
 
-      await this.sendWebhook(webhookId, webhook.url, webhook.secret, testPayload);
+      await WebhookService.sendWebhook(webhookId, webhook.url, webhook.secret, testPayload);
 
       return { success: true };
     } catch (error) {

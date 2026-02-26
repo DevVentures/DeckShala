@@ -392,11 +392,11 @@ export const templateCache = new CacheService("template", 100);
  * Cache decorator for functions
  */
 export function Cacheable(options: CacheOptions = {}) {
-  return function (
+  return (
     target: any,
     propertyKey: string,
     descriptor: PropertyDescriptor
-  ) {
+  ) => {
     const originalMethod = descriptor.value;
     const cacheService = new CacheService("decorator");
 

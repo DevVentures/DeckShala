@@ -118,7 +118,7 @@ export class OllamaService {
           size: model.size,
           modified: model.modified_at,
           isHealthy: true,
-          metrics: this.modelMetrics.get(model.name),
+          metrics: OllamaService.modelMetrics.get(model.name),
         })),
       };
     } catch (error) {
@@ -141,7 +141,7 @@ export class OllamaService {
     }
   ): Promise<string> {
     try {
-      const { models } = await this.getAvailableModels();
+      const { models } = await OllamaService.getAvailableModels();
 
       if (models.length === 0) {
         throw new Error("No models available");
@@ -152,14 +152,14 @@ export class OllamaService {
 
       if (requirements?.minContextWindow) {
         candidates = candidates.filter(m => {
-          const config = this.modelConfigs.find(c => c.name === m.name);
+          const config = OllamaService.modelConfigs.find(c => c.name === m.name);
           return config && config.contextWindow >= requirements.minContextWindow!;
         });
       }
 
       if (requirements?.maxLatency && candidates.length > 0) {
         candidates = candidates.filter(m => {
-          const metrics = this.modelMetrics.get(m.name);
+          const metrics = OllamaService.modelMetrics.get(m.name);
           return !metrics || metrics.averageLatency <= requirements.maxLatency!;
         });
       }
@@ -180,8 +180,8 @@ export class OllamaService {
 
       // Score each candidate
       const scores = candidates.map(model => {
-        const config = this.modelConfigs.find(c => c.name === model.name);
-        const metrics = this.modelMetrics.get(model.name);
+        const config = OllamaService.modelConfigs.find(c => c.name === model.name);
+        const metrics = OllamaService.modelMetrics.get(model.name);
 
         let score = config?.priority || 50;
 
@@ -234,24 +234,24 @@ export class OllamaService {
     const startTime = Date.now();
 
     // Try preferred model first
-    let models = options?.preferredModel
+    const models = options?.preferredModel
       ? [options.preferredModel]
       : [];
 
     // Add other available models
-    const { models: availableModels } = await this.getAvailableModels();
+    const { models: availableModels } = await OllamaService.getAvailableModels();
     models.push(...availableModels.map(m => m.name));
 
     for (const modelName of models) {
       attemptedModels.push(modelName);
 
       try {
-        const result = await this.generateWithModel(modelName, prompt, options);
+        const result = await OllamaService.generateWithModel(modelName, prompt, options);
 
         const latency = Date.now() - startTime;
 
         // Update metrics
-        this.updateMetrics(modelName, latency, true);
+        OllamaService.updateMetrics(modelName, latency, true);
 
         return {
           response: result.response,
@@ -268,7 +268,7 @@ export class OllamaService {
           error: (error as Error).message,
         });
 
-        this.updateMetrics(modelName, Date.now() - startTime, false);
+        OllamaService.updateMetrics(modelName, Date.now() - startTime, false);
       }
     }
 
@@ -341,7 +341,7 @@ export class OllamaService {
       model?: string;
     }
   ): Promise<string> {
-    const result = await this.generateWithFallback(prompt, {
+    const result = await OllamaService.generateWithFallback(prompt, {
       temperature: options?.temperature,
       maxTokens: options?.maxTokens,
       system: options?.system,
@@ -359,10 +359,10 @@ export class OllamaService {
     latency: number,
     success: boolean
   ): void {
-    const existing = this.modelMetrics.get(model);
+    const existing = OllamaService.modelMetrics.get(model);
 
     if (!existing) {
-      this.modelMetrics.set(model, {
+      OllamaService.modelMetrics.set(model, {
         model,
         averageLatency: latency,
         successRate: success ? 1 : 0,
@@ -375,7 +375,7 @@ export class OllamaService {
     const totalRequests = existing.totalRequests + 1;
     const successCount = existing.successRate * existing.totalRequests + (success ? 1 : 0);
 
-    this.modelMetrics.set(model, {
+    OllamaService.modelMetrics.set(model, {
       model,
       averageLatency:
         (existing.averageLatency * existing.totalRequests + latency) / totalRequests,
@@ -389,7 +389,7 @@ export class OllamaService {
    * Get model metrics
    */
   static getModelMetrics(): ModelMetrics[] {
-    return Array.from(this.modelMetrics.values());
+    return Array.from(OllamaService.modelMetrics.values());
   }
 
   /**

@@ -6,7 +6,7 @@ import { BrandKitService } from "@/lib/brand-kit-service";
 import { TemplateService } from "@/lib/template-service";
 import { generateEnhancedModePrompt } from "@/lib/ai-mode-prompts";
 import { logger } from "@/lib/logger";
-import type { TemplateCategory } from "@prisma/client";
+import { type TemplateCategory } from "@prisma/client";
 
 /**
  * Get enhanced prompt with template structure and brand kit guidelines

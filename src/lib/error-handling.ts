@@ -194,7 +194,7 @@ export async function withRetry<T>(
       // Calculate delay with exponential backoff
       let delay = opts.delayMs;
       if (opts.exponentialBackoff) {
-        delay = opts.delayMs * Math.pow(opts.backoffMultiplier!, attempt - 1);
+        delay = opts.delayMs * opts.backoffMultiplier! ** (attempt - 1);
         delay = Math.min(delay, opts.maxDelayMs!);
       }
 
@@ -425,9 +425,9 @@ export async function withTimeout<T>(
 export class ErrorHandler {
   static handle(error: Error, context?: Record<string, unknown>): void {
     if (error instanceof AppError) {
-      this.handleAppError(error, context);
+      ErrorHandler.handleAppError(error, context);
     } else {
-      this.handleUnknownError(error, context);
+      ErrorHandler.handleUnknownError(error, context);
     }
   }
 
@@ -543,7 +543,6 @@ export async function gracefulDegradation<T>(
       logger.warn('Operation failed, trying next fallback', {
         error: error instanceof Error ? error.message : String(error),
       });
-      continue;
     }
   }
 
