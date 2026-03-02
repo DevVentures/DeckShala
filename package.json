@@ -151,7 +151,7 @@
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "19.1.0",
-    "react-dropzone": "^14.3.8",
+    "react-dropzone": "^15.0.0",
     "react-fontpicker-ts": "^1.2.0",
     "react-hook-form": "^7.71.2",
     "react-icons": "^4.12.0",
